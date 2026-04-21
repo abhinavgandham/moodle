@@ -22,6 +22,8 @@
  * @license    https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core_h5p\core;
+
 if (isset($_SERVER['REMOTE_ADDR'])) {
     die; // No access from web!
 }
@@ -108,17 +110,36 @@ if ($code != 0) {
 chdir(__DIR__);
 $output = null;
 exec("php util.php --diag", $output, $code);
+
+$moodleroot = dirname(__DIR__, 5);
+// Read version from version.php.
+preg_match('/\$version\s*=\s*(\d+)/', file_get_contents($moodleroot . '/public/version.php'), $matches);
+$version = $matches[1];
+$snapshotdir = "/var/lib/sitedata/phpunit_snapshots/$version";
+
 if ($code == PHPUNIT_EXITCODE_INSTALL) {
+    // This is the first time install, so we go through full installation process then save a snapshot.
     passthru("php util.php --install", $code);
     if ($code != 0) {
         exit($code);
     }
+    // Save the initial db snapshot.
+    save_snapshot();
 
 } else if ($code == PHPUNIT_EXITCODE_REINSTALL) {
-    passthru("php util.php --drop", $code);
-    passthru("php util.php --install", $code);
-    if ($code != 0) {
-        exit($code);
+    if (is_dir($snapshotdir)) {
+        // If the snapshot exists, restore the db based on the snapshot and then run upgrade process.
+        restore_and_upgrade();
+    } else {
+        // If there is no snapshot, run the full phpunit install.
+        echo "No snapshot found for Moodle $version — running full reinstall...\n";
+        passthru("php util.php --drop", $code);
+        passthru("php util.php --install", $code);
+        if ($code != 0) {
+            exit($code);
+        }
+        // Always override existing snapshot at the end.
+        save_snapshot();
     }
 
 } else if ($code != 0) {
@@ -131,3 +152,100 @@ passthru("php util.php --buildconfig", $code);
 echo "\n";
 echo "PHPUnit test environment setup complete.\n";
 exit(0);
+
+// Function that saves a snapshot of the current state of the PHPUnit DB.
+function save_snapshot() {
+    global $snapshotdir, $moodleroot;
+    echo "Saving PHPUnit snapshot to $snapshotdir...\n";
+
+    if (!is_dir($snapshotdir)) {
+        mkdir($snapshotdir, 0777, true);
+    }
+
+    // Bootstrap Moodle.
+    define('CACHE_DISABLE_ALL', true);
+    define('PHPUNIT_UTIL', true);
+    require_once($moodleroot . '/vendor/autoload.php');
+    require_once($moodleroot . '/public/lib/phpunit/bootstrap.php');
+    initialise_cfg();
+
+    global $CFG;
+
+    exec("cp -r {$CFG->phpunit_dataroot} $snapshotdir/phpunitdata", $out, $exitcode);
+    if ($exitcode !== 0) {
+        echo "Error: failed to copy phpunitdata.\n";
+        exit(1);
+    }
+
+    echo "Snapshot saved.\n";
+}
+
+
+// Function that restores the PHPUnit DB from the stored snapshot, then upgrades all plugins to ensure any new/missing ones are installed.
+function restore_and_upgrade() {
+    global $snapshotdir, $moodleroot;
+    echo "Restoring PHPUnit snapshot from $snapshotdir...\n";
+
+    if (!defined('CACHE_DISABLE_ALL')) {
+        define('CACHE_DISABLE_ALL', true);
+    }
+    if (!defined('PHPUNIT_UTIL')) {
+        define('PHPUNIT_UTIL', true);
+    }
+    require_once($moodleroot . '/vendor/autoload.php');
+    require_once($moodleroot . '/public/lib/phpunit/bootstrap.php');
+    initialise_cfg();
+
+    global $CFG;
+
+    // Restore phpunitdata.
+    exec("rm -rf {$CFG->phpunit_dataroot}");
+    exec("cp -r $snapshotdir/phpunitdata {$CFG->phpunit_dataroot}");
+
+    \core\test\phpunit\phpunit_util::reset_database();
+
+    echo "Snapshot restored.\n\n";
+
+    require_once($CFG->libdir . '/adminlib.php');
+    require_once($CFG->libdir . '/upgradelib.php');
+
+    $start = function ($component, $installing, $verbose) {
+        echo ($installing ? 'Installing' : 'Upgrading') . " $component...\n";
+    };
+    $end = function ($component, $installing, $verbose) {
+        echo "Done: $component\n";
+    };
+
+    echo "Installing missing plugins...\n\n";
+
+    foreach (array_keys(core_component::get_plugin_types()) as $type) {
+        upgrade_plugins($type, $start, $end, true);
+    }
+
+    unset_config('upgraderunning');
+
+    echo "\nUpdating version hash and serialised DB state...\n";
+
+    $reflection = new ReflectionClass(\core\test\phpunit\phpunit_util::class);
+
+    $storeHash = $reflection->getMethod('store_versions_hash');
+    $storeHash->setAccessible(true);
+    $storeHash->invoke(null);
+
+    $storeState = $reflection->getMethod('store_database_state');
+    $storeState->setAccessible(true);
+    $storeState->invoke(null);
+
+    echo "Done.\n";
+
+    // Overwrite the snapshot with the updated state so the next run only installs
+    // plugins added since this run, not everything since the original baseline.
+    echo "Updating snapshot at $snapshotdir...\n";
+    exec("rm -rf $snapshotdir/phpunitdata");
+    exec("cp -r {$CFG->phpunit_dataroot} $snapshotdir/phpunitdata", $out, $exitcode);
+    if ($exitcode !== 0) {
+        echo "Warning: failed to update snapshot.\n";
+    } else {
+        echo "Snapshot updated.\n";
+    }
+}
