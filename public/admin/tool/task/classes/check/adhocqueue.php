@@ -33,6 +33,37 @@ use moodle_url;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class adhocqueue extends check {
+    /**
+     * Default warning threshold for the age of the oldest unprocessed task in seconds.
+     */
+    private const DEFAULTWARNINGTHRESHOLD = 10 * MINSECS;
+
+    /**
+     * Default error threshold for the age of the oldest unprocessed task in seconds.
+     */
+    private const DEFAULTERRORTHRESHOLD = 4 * HOURSECS;
+
+    /**
+     * Method that gets the error theshold value.
+     *
+     * @return int
+     */
+    private function geterrorthreshold(): int {
+        global $CFG;
+
+        return $CFG->adhoctaskageerror ?? self::DEFAULTERRORTHRESHOLD;
+    }
+
+    /**
+     * Method that gets the warning theshold value.
+     *
+     * @return int
+     */
+    private function getwarningthreshold(): int {
+        global $CFG;
+
+        return $CFG->adhoctaskagewarn ?? self::DEFAULTWARNINGTHRESHOLD;
+    }
 
     /**
      * Return result
@@ -41,11 +72,48 @@ class adhocqueue extends check {
     public function get_result(): result {
         global $DB, $CFG;
 
-        $stats = $DB->get_record_sql('
+        $errorthreshold = $this->geterrorthreshold();
+
+        $warningthreshold = $this->getwarningthreshold();
+
+        $stats = $DB->get_record_sql(
+            '
             SELECT count(*) cnt,
                    MAX(? - nextruntime) age
               FROM {task_adhoc}
              WHERE attemptsavailable > 0 OR attemptsavailable IS NULL',
+            [time()]
+        );
+
+        $criticoverduecount = $DB->get_field_sql(
+            '
+            SELECT count(*)
+              FROM {task_adhoc}
+             WHERE nextruntime <= ? AND (attemptsavailable > 0 OR attemptsavailable IS NULL)',
+            [time() - $errorthreshold]
+        );
+
+        $overduecount = $DB->get_field_sql(
+            '
+            SELECT count(*)
+              FROM {task_adhoc}
+             WHERE nextruntime > ? AND nextruntime <= ? AND (attemptsavailable > 0 OR attemptsavailable IS NULL)',
+            [time() - $errorthreshold, time() - $warningthreshold]
+        );
+
+        $duecount = $DB->get_field_sql(
+            '
+            SELECT count(*)
+              FROM {task_adhoc}
+             WHERE nextruntime > ? AND nextruntime <= ? AND (attemptsavailable > 0 OR attemptsavailable IS NULL)',
+            [time() - $warningthreshold, time()]
+        );
+
+        $futurecount = $DB->get_field_sql(
+            '
+            SELECT count(*)
+              FROM {task_adhoc}
+             WHERE nextruntime > ? AND (attemptsavailable > 0 OR attemptsavailable IS NULL)',
             [time()]
         );
 
@@ -57,25 +125,37 @@ class adhocqueue extends check {
             // A large queue size by itself is not an issue, only when tasks
             // are not being processed in a timely fashion is it an issue.
             $status = result::INFO;
-            $summary = get_string('adhocqueuesize', 'tool_task', $stats->cnt);
-        }
+            $summaryparts = new \stdClass();
 
-        $max = $CFG->adhoctaskagewarn ?? 10 * MINSECS;
-        if ($stats->age > $max) {
-            $status = result::WARNING;
-            $summary = get_string('adhocqueueold', 'tool_task', [
-                'age' => format_time($stats->age),
-                'max' => format_time($max),
-            ]);
-        }
+            $summaryparts->criticallyoverdue = $criticoverduecount > 0
+                ? get_string('criticallyoverduetaskscount', 'tool_task', $criticoverduecount)
+                : '';
 
-        $max = $CFG->adhoctaskageerror ?? 4 * HOURSECS;
-        if ($stats->age > $max) {
-            $status = result::ERROR;
-            $summary = get_string('adhocqueueold', 'tool_task', [
-                'age' => format_time($stats->age),
-                'max' => format_time($max),
-            ]);
+            $summaryparts->overdue = $overduecount > 0
+                ? get_string('overduetaskscount', 'tool_task', $overduecount)
+                : '';
+
+            $summaryparts->due = get_string('duetaskscount', 'tool_task', $duecount);
+            $summaryparts->future = get_string('futuretaskscount', 'tool_task', $futurecount);
+            $summary = trim(get_string('taskssummary', 'tool_task', $summaryparts));
+
+            $max = $CFG->adhoctaskagewarn ?? self::DEFAULTWARNINGTHRESHOLD;
+            if ($stats->age > $max) {
+                $status = result::WARNING;
+                $details = get_string('adhocqueueold', 'tool_task', [
+                    'age' => format_time($stats->age),
+                    'max' => format_time($max),
+                ]);
+            }
+
+            $max = $CFG->adhoctaskageerror ?? self::DEFAULTERRORTHRESHOLD;
+            if ($stats->age > $max) {
+                $status = result::ERROR;
+                $details = get_string('adhocqueueold', 'tool_task', [
+                    'age' => format_time($stats->age),
+                    'max' => format_time($max),
+                ]);
+            }
         }
 
         return new result($status, $summary, $details);
