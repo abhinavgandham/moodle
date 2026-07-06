@@ -129,6 +129,9 @@ class message {
     /** @var boolean If message is anonymous. */
     private $anonymous;
 
+    /** @var string Optional component-defined key for a more precise unsubscribe. */
+    private $subscriptionkey;
+
     /** @var array a list of properties that is allowed for each message. */
     private $properties = array(
         'courseid',
@@ -157,6 +160,7 @@ class message {
         'fullmessagetrust',
         'customdata',
         'anonymous',
+        'subscriptionkey',
     );
 
     /** @var array property to store any additional message processor specific content */
