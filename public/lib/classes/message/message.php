@@ -120,20 +120,20 @@ class message {
     /** @var  int The time the message was created.*/
     private $timecreated;
 
-    /** @var boolean Mark trust content. */
+    /** @var bool Mark trust content. */
     private $fullmessagetrust;
 
     /** @var  mixed Custom data to be passed to the message processor. Must be serialisable using json_encode(). */
     private $customdata;
 
-    /** @var boolean If message is anonymous. */
+    /** @var bool If message is anonymous. */
     private $anonymous;
 
     /** @var string Optional component-defined key for a more precise unsubscribe. */
     private $subscriptionkey;
 
     /** @var array a list of properties that is allowed for each message. */
-    private $properties = array(
+    private $properties = [
         'courseid',
         'modulename',
         'component',
@@ -161,10 +161,10 @@ class message {
         'customdata',
         'anonymous',
         'subscriptionkey',
-    );
+    ];
 
     /** @var array property to store any additional message processor specific content */
-    private $additionalcontent = array();
+    private $additionalcontent = [];
 
     /**
      * Fullmessagehtml content including any processor specific content.
