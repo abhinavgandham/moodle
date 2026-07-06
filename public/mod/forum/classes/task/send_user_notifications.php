@@ -24,8 +24,6 @@
 
 namespace mod_forum\task;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Adhoc task to send user forum notifications.
  *
@@ -34,7 +32,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class send_user_notifications extends \core\task\adhoc_task {
-
     // Use the logging trait to get some nice, juicy, logging.
     use \core\task\logging_trait;
 
@@ -125,7 +122,7 @@ class send_user_notifications extends \core\task\adhoc_task {
         $this->log_start("Sending messages to {$this->recipient->username} ({$this->recipient->id})");
         foreach ($this->courses as $course) {
             $coursecontext = \context_course::instance($course->id);
-            if (!$course->visible and !has_capability('moodle/course:viewhiddencourses', $coursecontext)) {
+            if (!$course->visible && !has_capability('moodle/course:viewhiddencourses', $coursecontext)) {
                 // The course is hidden and the user does not have access to it.
                 // Permissions may have changed since it was queued.
                 continue;
@@ -190,8 +187,8 @@ class send_user_notifications extends \core\task\adhoc_task {
             if (!empty($this->recipient->email)) {
                 throw new \moodle_exception('Error sending posts.');
             } else {
-                mtrace("Failed to send emails for the user with ID ".
-                    $this->recipient->id ." due to an empty email address. Skipping re-queuing of the task.");
+                mtrace("Failed to send emails for the user with ID " .
+                    $this->recipient->id . " due to an empty email address. Skipping re-queuing of the task.");
             }
         } else if ($errorcount > 0) {
             // Requeue failed messages as a new task.
@@ -219,7 +216,7 @@ class send_user_notifications extends \core\task\adhoc_task {
             return;
         }
 
-        list($in, $params) = $DB->get_in_or_equal(array_values($postids));
+        [$in, $params] = $DB->get_in_or_equal(array_values($postids));
         $sql = "SELECT p.*, f.id AS forum, f.course
                   FROM {forum_posts} p
             INNER JOIN {forum_discussions} d ON d.id = p.discussion
@@ -250,7 +247,7 @@ class send_user_notifications extends \core\task\adhoc_task {
         }
 
         // Fetch all discussions.
-        list($in, $params) = $DB->get_in_or_equal(array_values($discussionids));
+        [$in, $params] = $DB->get_in_or_equal(array_values($discussionids));
         $this->discussions = $DB->get_records_select('forum_discussions', "id {$in}", $params);
         foreach ($this->discussions as $discussion) {
             if (empty($this->forumdiscussions[$discussion->forum])) {
@@ -260,7 +257,7 @@ class send_user_notifications extends \core\task\adhoc_task {
         }
 
         // Fetch all forums.
-        list($in, $params) = $DB->get_in_or_equal(array_values($forumids));
+        [$in, $params] = $DB->get_in_or_equal(array_values($forumids));
         $this->forums = $DB->get_records_select('forum', "id {$in}", $params);
         foreach ($this->forums as $forum) {
             if (empty($this->courseforums[$forum->course])) {
@@ -270,11 +267,11 @@ class send_user_notifications extends \core\task\adhoc_task {
         }
 
         // Fetch all courses.
-        list($in, $params) = $DB->get_in_or_equal(array_values($courseids));
+        [$in, $params] = $DB->get_in_or_equal(array_values($courseids));
         $this->courses = $DB->get_records_select('course', "id $in", $params);
 
         // Fetch all authors.
-        list($in, $params) = $DB->get_in_or_equal(array_values($userids));
+        [$in, $params] = $DB->get_in_or_equal(array_values($userids));
         $users = $DB->get_recordset_select('user', "id $in", $params);
         foreach ($users as $user) {
             $this->minimise_user_record($user);
@@ -366,7 +363,7 @@ class send_user_notifications extends \core\task\adhoc_task {
                     ],
                     'fullmessagehtml' => [
                         'footer' => \html_writer::tag('p', get_string('replytopostbyemail', 'mod_forum')),
-                    ]
+                    ],
                 ]);
         }
 
@@ -379,6 +376,7 @@ class send_user_notifications extends \core\task\adhoc_task {
         $contexturl = new \moodle_url('/mod/forum/discuss.php', ['d' => $discussion->id], "p{$post->id}");
         $eventdata->contexturl = $contexturl->out();
         $eventdata->contexturlname = $discussion->name;
+        $eventdata->subscriptionkey = (string) $discussion->id;
         // User image.
         $userpicture = new \user_picture($author);
         $userpicture->size = 1; // Use f1 size.
@@ -467,7 +465,7 @@ class send_user_notifications extends \core\task\adhoc_task {
             'List-Help: ' . $viewurl->out(),
             'Message-ID: ' . forum_get_email_message_id($post->id, $this->recipient->id),
             'X-Course-Id: ' . $course->id,
-            'X-Course-Name: '. format_string($course->fullname, true),
+            'X-Course-Name: ' . format_string($course->fullname, true),
 
             // Headers to help prevent auto-responders.
             'Precedence: Bulk',
