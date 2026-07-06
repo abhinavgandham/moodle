@@ -24,7 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->dirroot.'/message/output/lib.php');
+require_once($CFG->dirroot . '/message/output/lib.php');
 
 /**
  * The email message processor
@@ -38,25 +38,25 @@ class message_output_email extends message_output {
      * Processes the message (sends by email).
      * @param object $eventdata the event data submitted by the message sender plus $eventdata->savedmessageid
      */
-    function send_message($eventdata) {
+    public function send_message($eventdata) {
         global $CFG, $DB;
 
-        // skip any messaging suspended and deleted users
-        if ($eventdata->userto->auth === 'nologin' or $eventdata->userto->suspended or $eventdata->userto->deleted) {
+        // Skip any messaging suspended and deleted users.
+        if ($eventdata->userto->auth === 'nologin' || $eventdata->userto->suspended || $eventdata->userto->deleted) {
             return true;
         }
 
-        //the user the email is going to
+        // The user the email is going to.
         $recipient = null;
 
-        //check if the recipient has a different email address specified in their messaging preferences Vs their user profile
+        // Check if the recipient has a different email address specified in their messaging preferences Vs their user profile.
         $emailmessagingpreference = get_user_preferences('message_processor_email_email', null, $eventdata->userto);
         $emailmessagingpreference = clean_param($emailmessagingpreference, PARAM_EMAIL);
 
         // If the recipient has set an email address in their preferences use that instead of the one in their profile
-        // but only if overriding the notification email address is allowed
+        // but only if overriding the notification email address is allowed.
         if (!empty($emailmessagingpreference) && !empty($CFG->messagingallowemailoverride)) {
-            //clone to avoid altering the actual user object
+            // Clone to avoid altering the actual user object.
             $recipient = clone($eventdata->userto);
             $recipient->email = $emailmessagingpreference;
         } else {
@@ -100,9 +100,38 @@ class message_output_email extends message_output {
             }
         }
 
+        // Build a per-recipient clone of the sender carrying the unsubscribe headers, so we don't leak
+        // one recipient's link onto another recipient's copy of a shared $userfrom (customheaders travel
+        // via the "from" user, see email_to_user()).
+        $userfrom = $eventdata->userfrom;
+        if (!empty($eventdata->component) && !empty($eventdata->name)) {
+            $subscriptionkey = $eventdata->subscriptionkey ?? '';
+            $link = \core_message\unsubscribe_link::create(
+                $recipient->id,
+                $eventdata->component,
+                $eventdata->name,
+                $subscriptionkey
+            );
+            if ($link) {
+                $userfrom = clone($eventdata->userfrom);
+                $existingheaders = (array) ($userfrom->customheaders ?? []);
+                $userfrom->customheaders = array_merge($existingheaders, $link->get_headers());
+            }
+        }
+
         if ($emailuser) {
-            $result = email_to_user($recipient, $eventdata->userfrom, $eventdata->subject, $eventdata->fullmessage,
-                $eventdata->fullmessagehtml, $attachment, $attachname, true, $replyto, $replytoname);
+            $result = email_to_user(
+                $recipient,
+                $userfrom,
+                $eventdata->subject,
+                $eventdata->fullmessage,
+                $eventdata->fullmessagehtml,
+                $attachment,
+                $attachname,
+                true,
+                $replyto,
+                $replytoname
+            );
         } else {
             $messagetosend = new stdClass();
             $messagetosend->useridfrom = $eventdata->userfrom->id;
@@ -125,37 +154,37 @@ class message_output_email extends message_output {
      *
      * @param array $preferences An array of user preferences
      */
-    function config_form($preferences){
+    public function config_form($preferences) {
         global $USER, $OUTPUT, $CFG;
         $string = '';
 
-        $choices = array();
+        $choices = [];
         $choices['0'] = get_string('textformat');
         $choices['1'] = get_string('htmlformat');
         $current = $preferences->mailformat;
         $string .= $OUTPUT->container(html_writer::label(get_string('emailformat'), 'mailformat'));
-        $string .= $OUTPUT->container(html_writer::select($choices, 'mailformat', $current, false, array('id' => 'mailformat')));
-        $string .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'userid', 'value' => $USER->id));
+        $string .= $OUTPUT->container(html_writer::select($choices, 'mailformat', $current, false, ['id' => 'mailformat']));
+        $string .= html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'userid', 'value' => $USER->id]);
 
         if (!empty($CFG->allowusermailcharset)) {
-            $choices = array();
+            $choices = [];
             $charsets = get_list_of_charsets();
             if (!empty($CFG->sitemailcharset)) {
-                $choices['0'] = get_string('site').' ('.$CFG->sitemailcharset.')';
+                $choices['0'] = get_string('site') . ' (' . $CFG->sitemailcharset . ')';
             } else {
-                $choices['0'] = get_string('site').' (UTF-8)';
+                $choices['0'] = get_string('site') . ' (UTF-8)';
             }
             $choices = array_merge($choices, $charsets);
             $current = $preferences->mailcharset;
             $string .= $OUTPUT->container(html_writer::label(get_string('emailcharset'), 'mailcharset'));
             $string .= $OUTPUT->container(
-                html_writer::select($choices, 'preference_mailcharset', $current, false, array('id' => 'mailcharset'))
+                html_writer::select($choices, 'preference_mailcharset', $current, false, ['id' => 'mailcharset'])
             );
         }
 
         if (!empty($CFG->messagingallowemailoverride)) {
-            $inputattributes = array('size' => '30', 'name' => 'email_email', 'value' => $preferences->email_email,
-                    'id' => 'email_email');
+            $inputattributes = ['size' => '30', 'name' => 'email_email', 'value' => $preferences->email_email,
+                    'id' => 'email_email'];
             $string .= html_writer::label(get_string('email', 'message_email'), 'email_email');
             $string .= $OUTPUT->container(html_writer::empty_tag('input', $inputattributes));
 
@@ -179,7 +208,7 @@ class message_output_email extends message_output {
      * @param stdClass $form preferences form class
      * @param array $preferences preferences array
      */
-    function process_form($form, &$preferences){
+    public function process_form($form, &$preferences) {
         global $CFG;
 
         if (isset($form->email_email)) {
@@ -192,7 +221,7 @@ class message_output_email extends message_output {
             }
         }
         if (isset($form->mailformat) && isset($form->userid)) {
-            require_once($CFG->dirroot.'/user/lib.php');
+            require_once($CFG->dirroot . '/user/lib.php');
 
             $user = core_user::get_user($form->userid, '*', MUST_EXIST);
             $user->mailformat = clean_param($form->mailformat, PARAM_INT);
@@ -215,8 +244,8 @@ class message_output_email extends message_output {
      * @param array $preferences preferences array
      * @param int $userid the user id
      */
-    function load_data(&$preferences, $userid){
-        $preferences->email_email = get_user_preferences( 'message_processor_email_email', '', $userid);
+    public function load_data(&$preferences, $userid) {
+        $preferences->email_email = get_user_preferences('message_processor_email_email', '', $userid);
     }
 
     /**

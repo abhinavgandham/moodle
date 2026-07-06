@@ -1,0 +1,53 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template core_message/unsubscribe_confirm_form
+
+    Confirmation form for the one-click unsubscribe page. Submitting this form
+    posts the body required by RFC 8058 section 3 (List-Unsubscribe=One-Click)
+    back to the same URL.
+
+    Context variables required for this template:
+    * message - The confirmation message to show the user.
+    * actionurl - The URL to POST the unsubscribe action to.
+    * buttonlabel - The label for the submit button.
+
+    Example context (json):
+    {
+        "message": "Are you sure you want to stop receiving email notifications for \"component\"?",
+        "actionurl": "https://example.com/message/unsubscribe.php?token=abc&subscriptionkey=mod_forum_posts",
+        "buttonlabel": "Unsubscribe"
+    }
+}}
+<div class="generalbox modal modal-dialog modal-in-page show" role="alertdialog" aria-labelledby="modal-header" aria-describedby="modal-body" aria-modal="true">
+    <div class="modal-content">
+        <div class="modal-header px-3">
+            <h4 class="h4">{{#str}}confirm{{/str}}</h4>
+        </div>
+        <div class="modal-body" role="alert" data-aria-autofocus="true">
+            <p>{{message}}</p>
+        </div>
+        <div class="modal-footer">
+            <div class="buttons">
+                <form method="post" action="{{actionurl}}" class="d-inline">
+                    <input type="hidden" name="List-Unsubscribe" value="One-Click">
+                    <input type="submit" value="{{buttonlabel}}" class="btn btn-primary">
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
