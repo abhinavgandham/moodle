@@ -159,6 +159,7 @@ $string['cliupgrademaintenancenotrequired'] = 'This upgrade WILL NOT result in m
 $string['cliupgrademaintenancerequired'] = 'This upgrade WILL result in maintenance mode for users.';
 $string['cliupgradenoneed'] = 'No upgrade needed for the installed version {$a}. Thanks for coming anyway!';
 $string['cliupgradepending'] = 'An upgrade is pending';
+$string['newadminsettingspending'] = 'The following admin settings have not been set in the database:';
 $string['cliupgradesetlock'] = 'Upgrade has been locked to Command Line Interface (CLI) execution only.';
 $string['cliupgradeunsetlock'] = 'Existing Command Line Interface (CLI) execution upgrade lock has been removed.';
 $string['cliyesnoprompt'] = 'type y (means yes) or n (means no)';

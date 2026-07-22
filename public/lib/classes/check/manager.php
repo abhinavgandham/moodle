@@ -134,6 +134,7 @@ class manager {
             new security\emailchangeconfirmation(),
             new security\securitymessages(),
             new security\webcron(),
+            new security\newsettings(),
             new http\cookiesecure(),
             new access\riskadmin(),
             new access\riskxss(),
