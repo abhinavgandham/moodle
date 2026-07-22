@@ -133,6 +133,7 @@ class manager {
             new security\passwordpolicy(),
             new security\emailchangeconfirmation(),
             new security\webcron(),
+            new security\newsettings(),
             new http\cookiesecure(),
             new access\riskadmin(),
             new access\riskxss(),

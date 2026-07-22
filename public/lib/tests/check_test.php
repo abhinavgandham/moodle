@@ -18,6 +18,7 @@ namespace core;
 
 use core\check\result;
 use core\check\security\passwordpolicy;
+use core\check\security\newsettings;
 
 /**
  * Example unit tests for check API
@@ -29,7 +30,6 @@ use core\check\security\passwordpolicy;
  * @covers     \core\check\check
  */
 final class check_test extends \advanced_testcase {
-
     /**
      * A simple example showing how a check and result object works
      *
@@ -67,5 +67,39 @@ final class check_test extends \advanced_testcase {
         $check->set_component('test component');
         $this->assertEquals('test component', $check->get_component());
     }
-}
 
+    /**
+     * Tests that the newsettings check reports a warning when a setting is unset.
+     */
+    public function test_newsettings_warning(): void {
+        global $CFG;
+        $this->resetAfterTest();
+
+        // Setting these settings as they are not set in the phpunit environment.
+        set_config('supportemail', 'support@example.com');
+        $frontpage = new \admin_setting_special_frontpagedesc();
+        $frontpage->write_setting('test frontpage description');
+
+        unset($CFG->passwordpolicy);
+
+        $check = new newsettings();
+        $result = $check->get_result();
+        $this->assertEquals($result->get_status(), result::WARNING);
+    }
+
+    /**
+     * Tests that the newsettings check reports OK when all settings are set.
+     */
+    public function test_newsettings_ok(): void {
+        $this->resetAfterTest();
+
+        // Setting these settings as they are not set in the phpunit environment.
+        set_config('supportemail', 'support@example.com');
+        $frontpage = new \admin_setting_special_frontpagedesc();
+        $frontpage->write_setting('test frontpage description');
+
+        $check = new newsettings();
+        $result = $check->get_result();
+        $this->assertEquals($result->get_status(), result::OK);
+    }
+}
