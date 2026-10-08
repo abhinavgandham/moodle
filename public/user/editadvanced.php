@@ -31,6 +31,8 @@ require_once($CFG->dirroot.'/user/profile/lib.php');
 require_once($CFG->dirroot.'/user/lib.php');
 require_once($CFG->dirroot.'/webservice/lib.php');
 
+use core_admin\local\siteadmin;
+
 $id     = optional_param('id', $USER->id, PARAM_INT);    // User id; -1 if creating new user.
 $course = optional_param('course', SITEID, PARAM_INT);   // Course id (defaults to Site).
 $returnto = optional_param('returnto', null, PARAM_ALPHA);  // Code determining where to return to after save.
@@ -171,10 +173,32 @@ if ($returnto === 'profile') {
     $returnurl = new moodle_url('/user/preferences.php', array('userid' => $user->id));
 }
 
+$usernew = $userform->get_data();
+
+// Suspending a site admin also removes their admin status, so ask for confirmation before saving anything.
+$suspendingadmin = $usernew && $user->id > 0 && !empty($usernew->suspended) && !$user->suspended &&
+    is_siteadmin($user->id);
+$confirmadminsuspend = $suspendingadmin && empty($usernew->confirmadminsuspend);
+
 if ($userform->is_cancelled()) {
     redirect($returnurl);
-} else if ($usernew = $userform->get_data()) {
+} else if ($confirmadminsuspend) {
+    // Ask for confirmation. Confirming submits the whole form again, so none of the other changes are lost.
+    $postfields = (array)data_submitted();
+    unset($postfields['sesskey'], $postfields['submitbutton']);
+    $postfields['confirmadminsuspend'] = 1;
+    if ($returnto !== null) {
+        $postfields['returnto'] = $returnto;
+    }
+
+    $confirmurl = new moodle_url($PAGE->url->out_omit_querystring(), $postfields);
+    echo $OUTPUT->header();
+    echo $PAGE->get_renderer('core', 'admin')->suspend_admin_confirm($user, $confirmurl, $PAGE->url);
+    echo $OUTPUT->footer();
+    die;
+} else if ($usernew) {
     $usercreated = false;
+    unset($usernew->confirmadminsuspend);
 
     if (empty($usernew->auth)) {
         // User editing self.
@@ -221,6 +245,10 @@ if ($userform->is_cancelled()) {
             throw new \moodle_exception('cannotupdateuseronexauth', '', '', $user->auth);
         }
         \core\user::update_user($usernew, false, false);
+
+        if ($suspendingadmin) {
+            siteadmin::remove_admins((string)$user->id, true);
+        }
 
         // Set new password if specified.
         if (!empty($usernew->newpassword)) {

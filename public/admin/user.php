@@ -6,6 +6,8 @@
     require_once($CFG->dirroot.'/user/lib.php');
     require_once($CFG->dirroot.'/'.$CFG->admin.'/user/user_bulk_forms.php');
 
+    use core_admin\local\siteadmin;
+
     $delete       = optional_param('delete', 0, PARAM_INT);
     $confirm      = optional_param('confirm', '', PARAM_ALPHANUM);   //md5 confirmation hash
     $confirmuser  = optional_param('confirmuser', 0, PARAM_INT);
@@ -132,14 +134,7 @@
     } else if ($suspend and confirm_sesskey()) {
         require_capability('moodle/user:update', $sitecontext);
 
-        if ($user = $DB->get_record('user', array('id'=>$suspend, 'mnethostid'=>$CFG->mnet_localhost_id, 'deleted'=>0))) {
-            if (!is_siteadmin($user) and $USER->id != $user->id and $user->suspended != 1) {
-                $user->suspended = 1;
-                // Force logout.
-                \core\session\manager::destroy_user_sessions($user->id);
-                \core\user::update_user($user, false);
-            }
-        }
+        siteadmin::suspend_user($suspend, $confirm, $returnurl);
         redirect($returnurl);
 
     } else if ($unsuspend and confirm_sesskey()) {

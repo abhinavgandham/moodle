@@ -1,0 +1,9 @@
+issueNumber: MDL-89930
+notes:
+  core:
+    - message: >-
+        A new `core_admin_renderer::suspend_admin_confirm()` method has been added, which
+        renders the confirmation shown before suspending a site administrator.
+        Suspending a site administrator now also removes them from the site
+        administrators list.
+      type: improved

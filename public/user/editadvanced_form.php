@@ -64,6 +64,9 @@ class user_editadvanced_form extends moodleform {
         $mform->setType('id', core_user::get_property_type('id'));
         $mform->addElement('hidden', 'course', $COURSE->id);
         $mform->setType('course', PARAM_INT);
+        // Set to 1 by the confirmation page when the suspension of a site admin has been confirmed.
+        $mform->addElement('hidden', 'confirmadminsuspend', 0);
+        $mform->setType('confirmadminsuspend', PARAM_BOOL);
 
         // Print the required moodle fields first.
         $mform->addElement('header', 'moodle', $strgeneral);
@@ -207,14 +210,14 @@ class user_editadvanced_form extends moodleform {
             }
         }
 
-        if ($user and is_mnet_remote_user($user)) {
+        if ($user && is_mnet_remote_user($user)) {
             // Only local accounts can be suspended.
             if ($mform->elementExists('suspended')) {
                 $mform->removeElement('suspended');
             }
         }
-        if ($user and ($user->id == $USER->id or is_siteadmin($user))) {
-            // Prevent self and admin mess ups.
+        if ($user && ($user->id == $USER->id || (is_siteadmin($user) && !is_siteadmin($USER)))) {
+            // Prevent self mess ups, and non-admins suspending an admin.
             if ($mform->elementExists('suspended')) {
                 $mform->hardFreeze('suspended');
             }

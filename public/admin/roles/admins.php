@@ -25,6 +25,8 @@
 require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 
+use core_admin\local\siteadmin;
+
 $addusersaction = optional_param('add', false, PARAM_BOOL);
 $addusers = optional_param('addusers', '', PARAM_SEQUENCE);
 $removeusersaction = optional_param('remove', false, PARAM_BOOL);
@@ -143,28 +145,7 @@ if ($addusersaction) {
     redirect($PAGE->url);
 
 } else if ($removeusers && confirm_sesskey()) {
-    $admins = array();
-    foreach (explode(',', $CFG->siteadmins) as $admin) {
-        $admin = (int)$admin;
-        if ($admin) {
-            $admins[$admin] = $admin;
-        }
-    }
-
-    $logstringold = implode(', ', $admins);
-
-    // Can not remove self.
-    foreach (explode(',', $removeusers) as $userid) {
-        if ($userid != $USER->id) {
-            unset($admins[$userid]);
-        }
-    }
-
-    $logstringnew = implode(', ', $admins);
-
-    set_config('siteadmins', implode(',', $admins));
-    add_to_config_log('siteadmins', $logstringold, $logstringnew, 'core');
-
+    siteadmin::remove_admins($removeusers);
     redirect($PAGE->url);
 }
 
