@@ -128,7 +128,22 @@
         require_capability('moodle/user:update', $sitecontext);
 
         if ($user = $DB->get_record('user', array('id'=>$suspend, 'mnethostid'=>$CFG->mnet_localhost_id, 'deleted'=>0))) {
-            if (!is_siteadmin($user) and $USER->id != $user->id and $user->suspended != 1) {
+        $isadmin = is_siteadmin($user->id);
+        if ($USER->id != $user->id && $user->suspended != 1) {
+            if ($isadmin && $confirm != md5($suspend)) {
+                echo $OUTPUT->header();
+                $yesurl = new moodle_url($returnurl, [
+                    'suspend' => $suspend,
+                    'confirm' => md5($suspend),
+                    'sesskey' => sesskey(),
+                ]);
+                echo $PAGE->get_renderer('core', 'admin')->suspend_admin_confirm($user, $yesurl, $returnurl);
+                echo $OUTPUT->footer();
+                die;
+            }
+            if ($isadmin) {
+                remove_admins((string)$user->id, true);
+            }
                 $user->suspended = 1;
                 // Force logout.
                 \core\session\manager::destroy_user_sessions($user->id);

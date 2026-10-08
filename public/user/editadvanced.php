@@ -31,6 +31,8 @@ require_once($CFG->dirroot.'/user/profile/lib.php');
 require_once($CFG->dirroot.'/user/lib.php');
 require_once($CFG->dirroot.'/webservice/lib.php');
 
+use core_admin\output\core_admin_renderer;
+
 $id     = optional_param('id', $USER->id, PARAM_INT);    // User id; -1 if creating new user.
 $course = optional_param('course', SITEID, PARAM_INT);   // Course id (defaults to Site).
 $returnto = optional_param('returnto', null, PARAM_ALPHA);  // Code determining where to return to after save.
@@ -175,6 +177,19 @@ if ($userform->is_cancelled()) {
     redirect($returnurl);
 } else if ($usernew = $userform->get_data()) {
     $usercreated = false;
+
+    // Suspending a site admin also removes their admin status, so confirm before saving anything.
+    if ($user->id > 0 && !empty($usernew->suspended) && !$user->suspended && is_siteadmin($user->id)) {
+        $suspendurl = new moodle_url('/admin/user.php', [
+            'suspend' => $user->id,
+            'confirm' => md5($user->id),
+            'sesskey' => sesskey(),
+        ]);
+        echo $OUTPUT->header();
+        echo $PAGE->get_renderer('core', 'admin')->suspend_admin_confirm($user, $suspendurl, $PAGE->url);
+        echo $OUTPUT->footer();
+        die;
+    }
 
     if (empty($usernew->auth)) {
         // User editing self.

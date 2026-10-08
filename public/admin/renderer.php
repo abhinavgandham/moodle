@@ -2681,4 +2681,23 @@ class core_admin_renderer extends plugin_renderer_base {
         $renderable = $themeselector->export_for_template($this);
         return $this->render_from_template('core_admin/themeselector/theme_selector', $renderable);
     }
+
+    /**
+     * Render the confirmation shown before suspending a site administrator.
+     *
+     * Suspending an admin also removes them from the site administrators list, so the user must confirm first.
+     *
+     * @param stdClass $user The admin user about to be suspended.
+     * @param moodle_url $confirmurl URL the "Suspend" button posts to.
+     * @param moodle_url $cancelurl URL to return to when the action is cancelled.
+     * @return string HTML of the confirmation.
+     */
+    public function suspend_admin_confirm(stdClass $user, moodle_url $confirmurl, moodle_url $cancelurl): string {
+        $button = new single_button($confirmurl, get_string('confirmsuspend', 'admin'), 'post');
+        return $this->output->confirm(
+            get_string('confirmadminsuspension', 'admin', fullname($user, true)),
+            $button,
+            $cancelurl
+        );
+    }
 }
