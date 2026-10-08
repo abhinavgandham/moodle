@@ -176,6 +176,19 @@ if ($userform->is_cancelled()) {
 } else if ($usernew = $userform->get_data()) {
     $usercreated = false;
 
+    // Suspending a site admin also removes their admin status, so confirm before saving anything.
+    if ($user->id > 0 && !empty($usernew->suspended) && !$user->suspended && is_siteadmin($user->id)) {
+        $suspendurl = new moodle_url('/admin/user.php', [
+            'suspend' => $user->id,
+            'confirm' => md5($user->id),
+            'sesskey' => sesskey(),
+        ]);
+        echo $OUTPUT->header();
+        echo $PAGE->get_renderer('core', 'admin')->suspend_admin_confirm($user, $suspendurl, $PAGE->url);
+        echo $OUTPUT->footer();
+        die;
+    }
+
     if (empty($usernew->auth)) {
         // User editing self.
         $authplugin = \core\di::get(\core\authentication::class)->get_plugin($user->auth);

@@ -295,7 +295,7 @@ class users extends system_report {
             new lang_string('suspenduser', 'admin'),
         ))->add_callback(static function (\stdclass $row) use ($USER, $contextsystem): bool {
             return has_capability('moodle/user:update', $contextsystem) && !$row->suspended && !is_mnet_remote_user($row) &&
-                !($row->id == $USER->id || is_siteadmin($row));
+                !($row->id == $USER->id);
         }));
 
         // Action to unsuspend users (non mnet remote users).
