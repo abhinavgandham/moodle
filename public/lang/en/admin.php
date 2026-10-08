@@ -40,6 +40,7 @@ $string['admincategory'] = 'Category: {$a}';
 $string['adminseesall'] = 'Admins see all';
 $string['adminseesallevents'] = 'Administrators see all events';
 $string['adminseesownevents'] = 'Administrators are just like other users';
+$string['adminsuspension'] = 'Suspend Admins';
 $string['advancedfeatures'] = 'Advanced features';
 $string['agedigitalconsentverification'] = 'Digital age of consent verification';
 $string['agedigitalconsentverification_desc'] = 'Enables verification of the digital age of consent before displaying the sign-up page for self-registration users. This protects your site from minors signing up without parental/guardian consent. <a target="_blank" href="{$a}">Support contact</a> details are provided for more help.';
@@ -175,6 +176,7 @@ $string['composeroptimisedindevmode'] = 'The Composer autoloader is currently ru
 $string['composernotoptimised'] = 'Moodle is running in production mode whilst the Composer autoloader is not optimised. You may wish to run "composer install --no-dev --classmap-authoritative" to optimise the autoloader.';
 $string['computedfromlogs'] = 'Computed from logs since {$a}.';
 $string['condifmodeditdefaults'] = 'Default values are used in the settings form when creating a new activity or resource.';
+$string['confirmadminsuspension'] = 'Are you sure you want to suspend {$a}? This will remove them from the list of site administrators and suspend their account.';
 $string['confeditorhidebuttons'] = 'Select the buttons that should be hidden in the HTML editor.';
 $string['config_read_scope_desc'] = 'Allows reading and viewing of site-wide configuration settings without modifying them.';
 $string['config_read_scope_summary'] = 'View site configuration settings';

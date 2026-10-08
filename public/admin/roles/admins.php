@@ -143,28 +143,7 @@ if ($addusersaction) {
     redirect($PAGE->url);
 
 } else if ($removeusers && confirm_sesskey()) {
-    $admins = array();
-    foreach (explode(',', $CFG->siteadmins) as $admin) {
-        $admin = (int)$admin;
-        if ($admin) {
-            $admins[$admin] = $admin;
-        }
-    }
-
-    $logstringold = implode(', ', $admins);
-
-    // Can not remove self.
-    foreach (explode(',', $removeusers) as $userid) {
-        if ($userid != $USER->id) {
-            unset($admins[$userid]);
-        }
-    }
-
-    $logstringnew = implode(', ', $admins);
-
-    set_config('siteadmins', implode(',', $admins));
-    add_to_config_log('siteadmins', $logstringold, $logstringnew, 'core');
-
+    remove_admins($removeusers);
     redirect($PAGE->url);
 }
 

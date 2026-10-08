@@ -213,8 +213,8 @@ class user_editadvanced_form extends moodleform {
                 $mform->removeElement('suspended');
             }
         }
-        if ($user and ($user->id == $USER->id or is_siteadmin($user))) {
-            // Prevent self and admin mess ups.
+        if ($user and ($user->id == $USER->id)) {
+            // Prevent self mess ups.
             if ($mform->elementExists('suspended')) {
                 $mform->hardFreeze('suspended');
             }

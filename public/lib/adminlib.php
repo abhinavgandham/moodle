@@ -1351,3 +1351,44 @@ function db_replace($search, $replace, $additionalskiptables = '') {
 
     return true;
 }
+
+
+/**
+ * Remove admins from the siteadmins list.
+ *
+ * @param string $removals Comma-separated list of user IDs to remove.
+ * @param bool $precheck If true, only perform a precheck without making changes.
+ */
+function remove_admins(string $removals, bool $precheck = false) {
+    global $CFG, $USER;
+
+    if ($precheck) {
+        // Precheck: Do not do anything if the siteadmins are defined in config.php.
+        if (array_key_exists('siteadmins', $CFG->config_php_settings)) {
+            return;
+        }
+    }
+
+    $admins = [];
+    foreach (explode(',', $CFG->siteadmins) as $admin) {
+        $admin = (int)$admin;
+        if ($admin) {
+            $admins[$admin] = $admin;
+        }
+    }
+
+    $logstringold = implode(', ', $admins);
+
+      // Can not remove self.
+    foreach (explode(',', $removals) as $userid) {
+        if ($userid != $USER->id) {
+            unset($admins[$userid]);
+        }
+    }
+
+    $logstringnew = implode(', ', $admins);
+
+    set_config('siteadmins', implode(',', $admins));
+    add_to_config_log('siteadmins', $logstringold, $logstringnew, 'core');
+
+}
