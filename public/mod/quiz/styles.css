@@ -285,7 +285,7 @@
     display: inline;
 }
 
-.quizattempt #mod_quiz_preflight_form {
+.quizstartbuttondiv + #mod_quiz_preflight_form {
     display: none;
 }
 
