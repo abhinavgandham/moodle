@@ -1,0 +1,11 @@
+issueNumber: MDL-87756
+notes:
+  core:
+    - message: >-
+        The `override` and `warning` context variables of the
+        `core_admin/setting` template are deprecated. Use the new
+        `notifications` context variable instead. The old variables are only
+        rendered when `notifications` is not provided, and are still populated
+        by core so theme and plugin overrides of this template keep working
+        until their final deprecation.
+      type: deprecated

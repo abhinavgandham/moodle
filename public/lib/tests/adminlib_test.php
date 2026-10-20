@@ -202,4 +202,84 @@ final class adminlib_test extends \advanced_testcase {
         $saved = admin_apply_default_settings(null, false);
         $this->assertSame([], $saved);
     }
+
+    /**
+     * The deprecated override and warning context variables of core_admin/setting must still be provided.
+     *
+     * @covers ::format_admin_setting
+     */
+    public function test_format_admin_setting_provides_deprecated_context(): void {
+        global $CFG, $OUTPUT;
+        $this->resetAfterTest();
+        require_once($CFG->libdir . '/adminlib.php');
+
+        $captured = null;
+        $renderer = $this->getMockBuilder(\core_renderer::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['render_from_template'])
+            ->getMock();
+        $renderer->method('render_from_template')->willReturnCallback(
+            function (string $template, $context) use (&$captured): string {
+                $captured = $context;
+                return '';
+            }
+        );
+        $originaloutput = $OUTPUT;
+        $OUTPUT = $renderer;
+
+        try {
+            $setting = new \admin_setting_configtext('mdl87756test', 'Test', 'Desc', '');
+            $CFG->config_php_settings['mdl87756test'] = 'forced';
+
+            format_admin_setting($setting, 'Title', '<input>', 'Description', true, 'Example warning.');
+
+            $this->assertSame('Example warning.', $captured->warning);
+            $this->assertSame(get_string('configoverride', 'admin'), $captured->override);
+            $this->assertCount(2, $captured->notifications);
+        } finally {
+            $OUTPUT = $originaloutput;
+        }
+    }
+
+    /**
+     * Callers rendering core_admin/setting directly with only the deprecated variables must still see them.
+     *
+     * @covers ::format_admin_setting
+     */
+    public function test_setting_template_renders_deprecated_context_without_notifications(): void {
+        global $OUTPUT;
+
+        $html = $OUTPUT->render_from_template('core_admin/setting', [
+            'id' => 'admin-test',
+            'title' => 'Title',
+            'override' => 'Deprecated override',
+            'warning' => 'Deprecated warning',
+        ]);
+
+        $this->assertStringContainsString('alert-info d-inline-block">Deprecated override', $html);
+        $this->assertStringContainsString('alert-warning d-inline-block">Deprecated warning', $html);
+    }
+
+    /**
+     * When notifications are provided, the deprecated variables must not be rendered as well.
+     *
+     * @covers ::format_admin_setting
+     */
+    public function test_setting_template_prefers_notifications_over_deprecated_context(): void {
+        global $OUTPUT;
+
+        $html = $OUTPUT->render_from_template('core_admin/setting', [
+            'id' => 'admin-test',
+            'title' => 'Title',
+            'notifications' => [
+                ['type' => 'info', 'message' => 'New notification'],
+            ],
+            'override' => 'Deprecated override',
+            'warning' => 'Deprecated warning',
+        ]);
+
+        $this->assertStringContainsString('New notification', $html);
+        $this->assertStringNotContainsString('Deprecated override', $html);
+        $this->assertStringNotContainsString('Deprecated warning', $html);
+    }
 }
