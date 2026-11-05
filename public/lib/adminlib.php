@@ -1163,8 +1163,9 @@ function format_admin_setting($setting, $title='', $form='', $description='', $l
     $form .= $setting->output_setting_flags();
     $pluginname = $setting->plugin ?? '';
     $settingname = $setting->name ?? '';
-    $isforcedcore = $setting->is_forceable() && array_key_exists($settingname, $CFG->config_php_settings);
-    $isforcedplugin = isset($CFG->forced_plugin_settings[$pluginname])
+    $isforcedcore = empty($setting->plugin) && $setting->is_forceable()
+        && array_key_exists($settingname, $CFG->config_php_settings);
+    $isforcedplugin = array_key_exists($pluginname, $CFG->forced_plugin_settings)
         && array_key_exists($settingname, $CFG->forced_plugin_settings[$pluginname]);
 
     // Dispatch the hook for all settings.
