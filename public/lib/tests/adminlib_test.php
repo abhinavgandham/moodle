@@ -240,4 +240,54 @@ final class adminlib_test extends \advanced_testcase {
             $OUTPUT = $originaloutput;
         }
     }
+
+    /** 
+     * Test that the override message is only shown for core settings and plugin settings that are forced.
+     */
+    public function test_format_admin_setting_forced_detection(): void {
+        global $CFG, $DB, $OUTPUT;
+        $this->resetAfterTest();
+        require_once($CFG->libdir . '/adminlib.php');
+
+        $CFG->config_php_settings['maxbytes'] = 1024;
+        $CFG->forced_plugin_settings = [];
+
+        $context = null;
+        $renderer = $this->getMockBuilder(\core_renderer::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['render_from_template'])
+            ->getMock();
+        $renderer->method('render_from_template')->willReturnCallback(
+            function (string $template, $data) use (&$context): string {
+                $context = $data;
+                return '';
+            }
+        );
+        $originaloutput = $OUTPUT;
+        $OUTPUT = $renderer;
+
+        try {
+            $options = [0 => 'a', 1024 => 'b'];
+            $message = get_string('configoverride', 'admin');
+
+            // Assert that the core setting has the override message.
+            $coresetting = new \admin_setting_configselect('maxbytes', 'Title', 'Desc', 0, $options);
+            format_admin_setting($coresetting, 'Title', '<input>', 'Description', true);
+            $this->assertSame($message, $context->override);
+
+            // Assert that the plugin setting does not have the override message.
+            $pluginsetting = new \admin_setting_configselect('assignsubmission_file/maxbytes', 'Title', 'Desc', 0, $options);
+            format_admin_setting($pluginsetting, 'Title', '<input>', 'Description', true);
+            $this->assertSame('', $context->override);
+
+            // Assert that the plugin setting has the override message when forced.
+            $CFG->forced_plugin_settings = ['assignsubmission_file' => ['maxbytes' => 1024]];
+            format_admin_setting($pluginsetting, 'Title', '<input>', 'Description', true);
+            $this->assertSame($message, $context->override);
+           
+        } finally {
+            $OUTPUT = $originaloutput;
+        }
+
+    }
 }
